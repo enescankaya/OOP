@@ -1,0 +1,86 @@
+import java.io.*;
+import java.net.ServerSocket;
+import java.net.Socket;
+
+public class Server {
+    private static final int PORT = 8080;
+    private static final String FILE_DIRECTORY = "files/";
+
+    public static void main(String[] args) {
+        try {
+            ServerSocket serverSocket = new ServerSocket(PORT);
+            System.out.println("Server started. Listening on port " + PORT);
+
+            while (true) {
+                Socket clientSocket = serverSocket.accept();
+                System.out.println("New client connected: " + clientSocket.getInetAddress());
+
+                ClientHandler clientHandler = new ClientHandler(clientSocket);
+                Thread thread = new Thread(clientHandler);
+                thread.start();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static String getFileDirectory() {
+        return FILE_DIRECTORY;
+    }
+}
+import java.io.*;
+import java.net.Socket;
+import java.util.Scanner;import java.io.*;
+import java.net.Socket;
+
+public class ClientHandler implements Runnable {
+    private Socket clientSocket;
+
+    public ClientHandler(Socket clientSocket) {
+        this.clientSocket = clientSocket;
+    }
+
+    @Override
+    public void run() {
+        try {
+            BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+
+            // Logic for handling client requests (upload/download) goes here
+
+            // Close resources
+            in.close();
+            out.close();
+            clientSocket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+public class Client {
+    private static final String SERVER_ADDRESS = "localhost";
+    private static final int SERVER_PORT = 8080;
+
+    public static void main(String[] args) {
+        try {
+            Socket socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
+            System.out.println("Connected to server.");
+
+            Scanner scanner = new Scanner(System.in);
+            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+            // Logic for file upload/download goes here
+
+            // Close resources
+            scanner.close();
+            out.close();
+            in.close();
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
