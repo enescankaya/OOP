@@ -1,0 +1,125 @@
+import java.io.*;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+// Represents the Key-Value store
+class KeyValueStore {
+    private final Map<String, String> data;
+
+    public KeyValueStore() {
+        this.data = new HashMap<>();
+    }
+
+    public synchronized void put(String key, String value) {
+        data.put(key, value);
+    }
+
+    public synchronized String get(String key) {
+        return data.get(key);
+    }
+
+    public synchronized boolean containsKey(String key) {
+        return data.containsKey(key);
+    }
+
+    public synchronized void remove(String key) {
+        data.remove(key);
+    }
+}
+
+// Represents the Server that handles client requests
+class Server {
+    private final int port;
+    private final KeyValueStore store;
+
+    public Server(int port) {
+        this.port = port;
+        this.store = new KeyValueStore();
+    }
+
+    public void start() {
+        try {
+            ServerSocket serverSocket = new ServerSocket(port);
+            System.out.println("Server started on port " + port);
+
+            ExecutorService executorService = Executors.newFixedThreadPool(10);
+
+            while (true) {
+                Socket socket = serverSocket.accept();
+                System.out.println("Client connected: " + socket.getInetAddress().getHostName());
+
+                ClientHandler clientHandler = new ClientHandler(socket, store);
+                executorService.execute(clientHandler);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+// Represents a handler for client requests
+class ClientHandler implements Runnable {
+    private final Socket socket;
+    private final KeyValueStore store;
+
+    public ClientHandler(Socket socket, KeyValueStore store) {
+        this.socket = socket;
+        this.store = store;
+    }
+
+    @Override
+    public void run() {
+        try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(" ");
+                String command = parts[0];
+                String key = parts[1];
+
+                switch (command) {
+                    case "PUT":
+                        String value = parts[2];
+                        store.put(key, value);
+                        writer.println("OK");
+                        break;
+                    case "GET":
+                        if (store.containsKey(key)) {
+                            writer.println(store.get(key));
+                        } else {
+                            writer.println("NOT_FOUND");
+                        }
+                        break;
+                    case "REMOVE":
+                        if (store.containsKey(key)) {
+                            store.remove(key);
+                            writer.println("REMOVED");
+                        } else {
+                            writer.println("NOT_FOUND");
+                        }
+                        break;
+                    default:
+                        writer.println("INVALID_COMMAND");
+                }
+            }
+
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+public class DistributedKeyValueStore {
+    public static void main(String[] args) {
+        int port = 8080; // Change this to desired port number
+        Server server = new Server(port);
+        server.start();
+    }
+}
