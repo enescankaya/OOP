@@ -1,0 +1,138 @@
+import java.util.ArrayList;
+import java.util.Scanner;
+
+// Define the Book class
+class Book {
+    private String title;
+    private String author;
+    private int quantity;
+
+    public Book(String title, String author, int quantity) {
+        this.title = title;
+        this.author = author;
+        this.quantity = quantity;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getAuthor() {
+        return author;
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(int quantity) {
+        this.quantity = quantity;
+    }
+
+    @Override
+    public String toString() {
+        return "Title: " + title + ", Author: " + author + ", Quantity: " + quantity;
+    }
+}
+
+// Define the Bookstore class to manage books
+class Bookstore {
+    private ArrayList<Book> books;
+
+    public Bookstore() {
+        books = new ArrayList<>();
+    }
+
+    public void addBook(Book book) {
+        books.add(book);
+        System.out.println("Book added successfully.");
+    }
+
+    public void removeBook(String title) {
+        for (Book book : books) {
+            if (book.getTitle().equalsIgnoreCase(title)) {
+                books.remove(book);
+                System.out.println("Book removed successfully.");
+                return;
+            }
+        }
+        System.out.println("Book not found.");
+    }
+
+    public void searchBook(String title) {
+        boolean found = false;
+        for (Book book : books) {
+            if (book.getTitle().equalsIgnoreCase(title)) {
+                System.out.println("Book found: " + book);
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            System.out.println("Book not found.");
+        }
+    }
+
+    public void displayBooks() {
+        if (books.isEmpty()) {
+            System.out.println("No books in the inventory.");
+            return;
+        }
+        System.out.println("Books in the inventory:");
+        for (Book book : books) {
+            System.out.println(book);
+        }
+    }
+}
+
+// Main class to run the program
+public class BookstoreManagementSystem {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        Bookstore bookstore = new Bookstore();
+
+        while (true) {
+            System.out.println("\nBookstore Management System");
+            System.out.println("1. Add Book");
+            System.out.println("2. Remove Book");
+            System.out.println("3. Search Book");
+            System.out.println("4. Display All Books");
+            System.out.println("5. Exit");
+            System.out.print("Enter your choice: ");
+            int choice = scanner.nextInt();
+            scanner.nextLine(); // Consume newline
+
+            switch (choice) {
+                case 1:
+                    System.out.print("Enter book title: ");
+                    String title = scanner.nextLine();
+                    System.out.print("Enter author: ");
+                    String author = scanner.nextLine();
+                    System.out.print("Enter quantity: ");
+                    int quantity = scanner.nextInt();
+                    scanner.nextLine(); // Consume newline
+                    Book newBook = new Book(title, author, quantity);
+                    bookstore.addBook(newBook);
+                    break;
+                case 2:
+                    System.out.print("Enter title of book to remove: ");
+                    String removeTitle = scanner.nextLine();
+                    bookstore.removeBook(removeTitle);
+                    break;
+                case 3:
+                    System.out.print("Enter title of book to search: ");
+                    String searchTitle = scanner.nextLine();
+                    bookstore.searchBook(searchTitle);
+                    break;
+                case 4:
+                    bookstore.displayBooks();
+                    break;
+                case 5:
+                    System.out.println("Exiting program...");
+                    System.exit(0);
+                default:
+                    System.out.println("Invalid choice. Please enter a valid option.");
+            }
+        }
+    }
+}
