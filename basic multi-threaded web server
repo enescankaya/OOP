@@ -1,0 +1,86 @@
+import java.io.*;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Date;
+import java.util.StringTokenizer;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class HttpServer {
+    private static final int PORT = 8080;
+    private static final String ROOT_DIRECTORY = "www";
+
+    public static void main(String[] args) {
+        ExecutorService executor = Executors.newFixedThreadPool(20);
+
+        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+            System.out.println("Server started on port " + PORT);
+
+            while (true) {
+                Socket socket = serverSocket.accept();
+                executor.execute(new HttpRequestHandler(socket));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            executor.shutdown();
+        }
+    }
+
+    private static class HttpRequestHandler implements Runnable {
+        private final Socket socket;
+
+        public HttpRequestHandler(Socket socket) {
+            this.socket = socket;
+        }
+
+        @Override
+        public void run() {
+            try {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream());
+
+                String requestLine = reader.readLine();
+                if (requestLine != null) {
+                    StringTokenizer tokens = new StringTokenizer(requestLine);
+                    String method = tokens.nextToken().toUpperCase();
+                    String fileName = tokens.nextToken().toLowerCase();
+
+                    if (method.equals("GET")) {
+                        if (fileName.equals("/") || fileName.equals("/index.html")) {
+                            fileName = "/index.html";
+                        }
+
+                        Path filePath = Paths.get(ROOT_DIRECTORY + fileName);
+                        if (Files.exists(filePath) && !Files.isDirectory(filePath)) {
+                            byte[] fileData = Files.readAllBytes(filePath);
+                            String contentType = Files.probeContentType(filePath);
+                            sendResponse(out, "200 OK", contentType, fileData);
+                        } else {
+                            byte[] fileData = "<h1>404 Not Found</h1>".getBytes();
+                            sendResponse(out, "404 Not Found", "text/html", fileData);
+                        }
+                    }
+                }
+
+                socket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        private void sendResponse(BufferedOutputStream out, String status, String contentType, byte[] data) throws IOException {
+            out.write(("HTTP/1.1 " + status + "\r\n").getBytes());
+            out.write(("Server: Java HTTP Server\r\n").getBytes());
+            out.write(("Date: " + new Date() + "\r\n").getBytes());
+            out.write(("Content-type: " + contentType + "\r\n").getBytes());
+            out.write(("Content-length: " + data.length + "\r\n").getBytes());
+            out.write(("\r\n").getBytes());
+            out.write(data, 0, data.length);
+            out.flush();
+        }
+    }
+}
