@@ -1,0 +1,138 @@
+import java.io.*;
+import java.net.*;
+import java.util.*;
+
+class Agent implements Serializable {
+    private String name;
+    private int resources;
+
+    public Agent(String name, int resources) {
+        this.name = name;
+        this.resources = resources;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public int getResources() {
+        return resources;
+    }
+
+    public void setResources(int resources) {
+        this.resources = resources;
+    }
+}
+
+class ResourceManager {
+    private Map<String, Integer> resourcePool;
+
+    public ResourceManager() {
+        resourcePool = new HashMap<>();
+        resourcePool.put("Resource1", 10);
+        resourcePool.put("Resource2", 15);
+        resourcePool.put("Resource3", 20);
+    }
+
+    public synchronized boolean allocateResource(String resourceName, int quantity) {
+        if (resourcePool.containsKey(resourceName)) {
+            int availableQuantity = resourcePool.get(resourceName);
+            if (availableQuantity >= quantity) {
+                resourcePool.put(resourceName, availableQuantity - quantity);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public synchronized void releaseResource(String resourceName, int quantity) {
+        if (resourcePool.containsKey(resourceName)) {
+            int availableQuantity = resourcePool.get(resourceName);
+            resourcePool.put(resourceName, availableQuantity + quantity);
+        }
+    }
+}
+
+class AgentHandler extends Thread {
+    private Socket socket;
+    private ResourceManager resourceManager;
+
+    public AgentHandler(Socket socket, ResourceManager resourceManager) {
+        this.socket = socket;
+        this.resourceManager = resourceManager;
+    }
+
+    public void run() {
+        try {
+            ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+            ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+
+            Agent agent = (Agent) in.readObject();
+            System.out.println("Received agent: " + agent.getName());
+
+            // Simulate resource allocation
+            Random random = new Random();
+            int requiredResources = random.nextInt(5) + 1;
+            boolean allocationResult = resourceManager.allocateResource("Resource1", requiredResources);
+
+            if (allocationResult) {
+                agent.setResources(agent.getResources() + requiredResources);
+                out.writeObject(agent);
+                System.out.println("Resources allocated to " + agent.getName() + ": " + requiredResources);
+            } else {
+                out.writeObject(null);
+                System.out.println("Insufficient resources to allocate to " + agent.getName());
+            }
+
+            in.close();
+            out.close();
+            socket.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+class ResourceManagerServer {
+    public static void main(String[] args) {
+        try {
+            ServerSocket serverSocket = new ServerSocket(12345);
+            ResourceManager resourceManager = new ResourceManager();
+            System.out.println("Resource Manager Server started...");
+
+            while (true) {
+                Socket socket = serverSocket.accept();
+                AgentHandler agentHandler = new AgentHandler(socket, resourceManager);
+                agentHandler.start();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+class AgentClient {
+    public static void main(String[] args) {
+        try {
+            Socket socket = new Socket("localhost", 12345);
+            ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+            ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+
+            Agent agent = new Agent("Agent1", 0);
+            out.writeObject(agent);
+            agent = (Agent) in.readObject();
+
+            if (agent != null) {
+                System.out.println("Received agent with updated resources: " + agent.getResources());
+            } else {
+                System.out.println("Failed to allocate resources for agent.");
+            }
+
+            in.close();
+            out.close();
+            socket.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
